@@ -1,0 +1,21 @@
+# FastAPI 框架
+fastapi>=0.109.0
+uvicorn[standard]>=0.27.0
+
+# 数据库
+sqlalchemy>=2.0.25
+pymysql>=1.1.0
+cryptography>=42.0.0
+
+# 数据验证
+pydantic>=2.6.0
+pydantic-settings>=2.1.0
+
+# 环境变量
+python-dotenv>=1.0.0
+
+# 日期时间处理
+python-dateutil>=2.8.2
+
+# 日志
+python-json-logger>=2.0.7
