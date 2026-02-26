@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 from database.crud.item_crud import get_item, update_item, get_items
 from database.crud.location_crud import get_location_by_code
-from database.schemas.item_schema import ItemUpdate, ItemStatus
+from database.schemas.item_schema import ItemUpdate, ItemStatus, ItemResponse
 
 class InventoryService:
     def __init__(self, db: Session):
@@ -24,7 +24,8 @@ class InventoryService:
             location_id=location.id,
             status=ItemStatus.IN_STOCK
         )
-        return update_item(self.db, item.item_sn, update_data)
+        db_item = update_item(self.db, item.item_sn, update_data)
+        return ItemResponse.model_validate(db_item)
 
     async def pick_item(self, query):
         """拣货/下架"""
@@ -37,15 +38,17 @@ class InventoryService:
             location_id=None,
             status=ItemStatus.PENDING_SHELVING 
         )
-        return update_item(self.db, item.item_sn, update_data)
+        db_item = update_item(self.db, item.item_sn, update_data)
+        return ItemResponse.model_validate(db_item)
 
     async def get_location_items(self, location_code: str):
         """查询库位上的物品"""
         location = get_location_by_code(self.db, location_code)
         if not location:
             return {"error": "Invalid location code"}
-        return location.items # 利用 ORM 关系直接获取
+        # 转换列表中的每个对象
+        return [ItemResponse.model_validate(item) for item in location.items]
 
     async def get_inventory_list(self, status=None, sku_id=None, skip=0, limit=10):
-        # 这里需要扩展 CRUD 支持更多筛选，目前仅演示
-        return get_items(self.db, skip=skip, limit=limit, sku_id=sku_id)
+        db_items = get_items(self.db, skip=skip, limit=limit, sku_id=sku_id)
+        return [ItemResponse.model_validate(item) for item in db_items]

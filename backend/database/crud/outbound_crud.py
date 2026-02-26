@@ -18,11 +18,13 @@ def create_outbound_record(db: Session, record: OutboundRecordCreate):
 def get_outbound_record(db: Session, record_id: int):
     return db.query(OutboundRecord).filter(OutboundRecord.id == record_id).first()
 
-def get_outbound_records(db: Session, skip: int = 0, limit: int = 100, order_no: Optional[str] = None):
+def get_outbound_records(db: Session, skip: int = 0, limit: int = 100, order_no: Optional[str] = None, item_sn: Optional[str] = None):
     query = db.query(OutboundRecord)
     if order_no:
         query = query.filter(OutboundRecord.order_no == order_no)
-    return query.offset(skip).limit(limit).all()
+    if item_sn:
+        query = query.filter(OutboundRecord.item_sn == item_sn)
+    return query.order_by(OutboundRecord.outbound_time.desc()).offset(skip).limit(limit).all()
 
 def update_outbound_record(db: Session, record_id: int, record_update: OutboundRecordUpdate):
     db_record = get_outbound_record(db, record_id)

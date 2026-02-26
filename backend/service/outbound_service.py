@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 from database.crud.outbound_crud import create_outbound_record, get_outbound_records
 from database.crud.item_crud import get_item, update_item
-from database.schemas.outbound_schema import OutboundRecordCreate
+from database.schemas.outbound_schema import OutboundRecordCreate, OutboundRecordResponse
 from database.schemas.item_schema import ItemUpdate, ItemStatus
 
 class OutboundService:
@@ -13,13 +13,13 @@ class OutboundService:
         # 1. 检查物品
         item = get_item(self.db, query.item_sn)
         if not item:
-            return {"error": "Item not found"}
+            return {"error": "物品不存在"}
         
         if item.status == ItemStatus.SOLD:
-             return {"error": "Item already sold"}
+            return {"error": "物品已售出，请勿重复发货"}
 
         # 2. 创建出库记录
-        record = create_outbound_record(self.db, query)
+        db_record = create_outbound_record(self.db, query)
         
         # 3. 更新物品状态为已售，并从库位移除
         item_update = ItemUpdate(
@@ -28,12 +28,16 @@ class OutboundService:
         )
         update_item(self.db, item.item_sn, item_update)
         
-        return record
+        return OutboundRecordResponse.model_validate(db_record)
 
     async def get_order_detail(self, order_no: str):
-        # 简单实现：只返回第一条记录，实际可能一个订单有多条
-        records = get_outbound_records(self.db, order_no=order_no)
-        return records
+        """查询订单详情"""
+        db_records = get_outbound_records(self.db, order_no=order_no)
+        if not db_records:
+            return None
+        return [OutboundRecordResponse.model_validate(r) for r in db_records]
 
     async def get_outbound_list(self, item_sn=None, skip=0, limit=10):
-        return get_outbound_records(self.db, skip=skip, limit=limit)
+        """查询出库列表"""
+        db_records = get_outbound_records(self.db, item_sn=item_sn, skip=skip, limit=limit)
+        return [OutboundRecordResponse.model_validate(r) for r in db_records]

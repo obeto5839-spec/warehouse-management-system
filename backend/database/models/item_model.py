@@ -35,6 +35,9 @@ class Item(Base):
         comment="当前状态"
     )
     
+    # 整机绑定：同一台整机的配件共享同一个 machine_sn
+    machine_sn = Column(String(50), nullable=True, index=True, comment="整机编码，空表示散件")
+    
     # 启用外键约束
     location_id = Column(Integer, ForeignKey("locations.id"), nullable=True, comment="库位ID，空表示未上架") 
     

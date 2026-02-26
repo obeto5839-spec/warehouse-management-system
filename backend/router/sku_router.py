@@ -22,12 +22,16 @@ async def create_sku(query: SKUCreate, db: Session = Depends(get_db)):
     """
     录入标准配件档案 (SKU)
     """
+    logging.info(f"录入SKU, category: {query.category}, brand: {query.brand}, model: {query.model_name}")
+    
     service = SKUService(db)
     result = await service.create_sku(query)
     
     if not result:
+        logging.warning(f"SKU已存在, category: {query.category}, brand: {query.brand}, model: {query.model_name}")
         return AppResult(code=400, message="该型号已存在，请勿重复录入", data=None)
-        
+    
+    logging.info(f"SKU录入成功, id: {result.get('id')}")
     return AppResult(code=200, message="标准件录入成功", data=result)
 
 @router.get("/search")
@@ -41,8 +45,63 @@ async def search_skus(
     """
     提供给前端下拉框使用的级联与模糊搜索接口
     """
+    logging.info(f"搜索SKU, category: {category}, brand: {brand}, keyword: {keyword}")
+    
     service = SKUService(db)
-    # 注意：这里调用的是 search_skus，需要在 service 中实现
     results = await service.search_skus(category=category, brand=brand, keyword=keyword, limit=limit)
     
     return AppResult(code=200, message="success", data=results)
+
+
+@router.get("/autocomplete")
+async def autocomplete_skus(
+    keyword: str = Query(..., min_length=1, description="搜索关键词"),
+    limit: int = Query(10, description="返回条数"),
+    db: Session = Depends(get_db)
+):
+    """
+    全局模糊搜索 SKU（配件录入时自动补全用）
+    输入关键词 → 在分类/品牌/型号中匹配 → 返回匹配的 SKU 列表
+    """
+    from database.crud.sku_crud import fuzzy_search_skus
+    skus = fuzzy_search_skus(db, keyword, limit)
+    result = [{
+        "id": s.id,
+        "category": s.category,
+        "brand": s.brand,
+        "model_name": s.model_name,
+        "label": f"{s.category} / {s.brand} / {s.model_name}",
+    } for s in skus]
+    return AppResult(code=200, message="success", data=result)
+
+
+@router.get("/property-schema")
+async def get_property_schema(
+    category: Optional[str] = Query(None, description="分类名，不传则返回全部分类的属性定义")
+):
+    """
+    获取各分类的规格参数字段定义（前端动态渲染表单用）
+    返回：{ "显卡": [{key, label, placeholder, required, type, options}, ...], ... }
+    """
+    from utils.sku_validator import get_property_schema as _get
+    schema = _get(category)
+    return AppResult(code=200, message="success", data=schema)
+
+
+@router.get("/categories")
+async def get_categories(db: Session = Depends(get_db)):
+    """获取所有分类列表（下拉框用）"""
+    from database.crud.sku_crud import get_distinct_categories
+    categories = get_distinct_categories(db)
+    return AppResult(code=200, message="success", data=categories)
+
+
+@router.get("/brands")
+async def get_brands(
+    category: str = Query(..., description="分类名"),
+    db: Session = Depends(get_db)
+):
+    """获取某分类下的品牌列表（级联下拉用）"""
+    from database.crud.sku_crud import get_brands_by_category
+    brands = get_brands_by_category(db, category)
+    return AppResult(code=200, message="success", data=brands)

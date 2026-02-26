@@ -17,6 +17,7 @@ class ItemBase(BaseModel):
     grade: Optional[str] = Field(None, description="成色，例如：99新")
     factory_sn: Optional[str] = Field(None, description="原厂条码")
     cost_price: Optional[Decimal] = Field(0.00, description="回收成本价")
+    machine_sn: Optional[str] = Field(None, description="整机编码，空表示散件")
     location_id: Optional[int] = Field(None, description="库位ID")
 
 class ItemCreate(ItemBase):
@@ -27,6 +28,7 @@ class ItemUpdate(BaseModel):
     factory_sn: Optional[str] = None
     cost_price: Optional[Decimal] = None
     status: Optional[ItemStatus] = None
+    machine_sn: Optional[str] = None
     location_id: Optional[int] = None
 
 class ItemResponse(ItemBase):

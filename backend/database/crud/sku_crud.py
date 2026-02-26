@@ -72,3 +72,25 @@ def search_skus(db: Session, category: str, brand: str = None, keyword: str = ""
         db_query = db_query.filter(SKU.model_name.ilike(f"%{keyword}%"))
         
     return db_query.limit(limit).all()
+
+
+def get_distinct_categories(db: Session):
+    """获取所有不重复的分类"""
+    results = db.query(SKU.category).distinct().all()
+    return [r[0] for r in results]
+
+
+def get_brands_by_category(db: Session, category: str):
+    """获取某分类下所有不重复的品牌"""
+    results = db.query(SKU.brand).filter(SKU.category == category).distinct().all()
+    return [r[0] for r in results]
+
+
+def fuzzy_search_skus(db: Session, keyword: str, limit: int = 10):
+    """全局模糊搜索：在分类、品牌、型号中匹配关键词"""
+    like = f"%{keyword}%"
+    return db.query(SKU).filter(
+        (SKU.category.ilike(like)) |
+        (SKU.brand.ilike(like)) |
+        (SKU.model_name.ilike(like))
+    ).limit(limit).all()
