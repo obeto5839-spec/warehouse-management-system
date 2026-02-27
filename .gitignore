@@ -28,8 +28,8 @@ env/
 
 # Environment Variables (重要！不要泄露敏感信息)
 .env
-.env.local
-.env.*.local
+.env.*
+!.env.example
 
 # IDE
 .idea/
