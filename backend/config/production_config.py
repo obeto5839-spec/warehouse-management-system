@@ -6,4 +6,4 @@ class ProductionSettings(Settings):
         env_file='.env.prod',
         extra='ignore'
     )
-    
+    DEBUG: bool = False

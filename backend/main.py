@@ -6,11 +6,17 @@ from utils.log_manage import init_logger
 from router.router import api_router
 from config import settings
 from security import verify_token
+from database.database import engine
+from database.models import Base
 
 # 日志初始化
 init_logger()
 
 app = FastAPI(title=settings.APP_NAME)
+
+@app.on_event("startup")
+async def startup():
+    Base.metadata.create_all(bind=engine)
 
 # CORS 配置
 app.add_middleware(

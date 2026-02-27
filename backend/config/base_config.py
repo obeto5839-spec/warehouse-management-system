@@ -4,7 +4,10 @@ import os
 class Settings(BaseSettings):
     ENV: str = "development"
     APP_NAME: str = "warehouse-management-system app"
-    
+
+    # 数据库连接（可被环境变量 DATABASE_URL 覆盖）
+    DATABASE_URL: str = "mysql+pymysql://root:root@localhost:3307/warehouse_system"
+
     # API 安全认证
     API_TOKEN: str = "warehouse-secret-token"
     API_TOKEN_NAME: str = "x-token"
