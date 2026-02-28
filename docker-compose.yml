@@ -34,8 +34,7 @@ services:
       - DATABASE_URL=mysql+pymysql://root:${MYSQL_ROOT_PASSWORD:-root123456}@db:3306/${MYSQL_DATABASE:-warehouse_system}
       - API_TOKEN=${API_TOKEN:-warehouse-secret-token}
     depends_on:
-      db:
-        condition: service_healthy
+      - db
 
   # ---- Vue 前端 (nginx) ----
   frontend:

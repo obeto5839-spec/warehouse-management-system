@@ -88,6 +88,23 @@ async def get_property_schema(
     return AppResult(code=200, message="success", data=schema)
 
 
+@router.get("/models")
+async def get_models(
+    category: str = Query(..., description="分类名"),
+    brand: str = Query(..., description="品牌名"),
+    db: Session = Depends(get_db)
+):
+    """获取某分类+品牌下的型号列表（含 properties，选型号后自动回填规格）"""
+    from database.crud.sku_crud import get_models_by_category_brand
+    skus = get_models_by_category_brand(db, category, brand)
+    result = [{
+        "id": s.id,
+        "model_name": s.model_name,
+        "properties": s.properties or {},
+    } for s in skus]
+    return AppResult(code=200, message="success", data=result)
+
+
 @router.get("/categories")
 async def get_categories(db: Session = Depends(get_db)):
     """获取所有分类列表（下拉框用）"""

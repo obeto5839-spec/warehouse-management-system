@@ -86,6 +86,14 @@ def get_brands_by_category(db: Session, category: str):
     return [r[0] for r in results]
 
 
+def get_models_by_category_brand(db: Session, category: str, brand: str):
+    """获取某分类+品牌下的所有型号（含 properties）"""
+    return db.query(SKU).filter(
+        SKU.category == category,
+        SKU.brand == brand
+    ).all()
+
+
 def fuzzy_search_skus(db: Session, keyword: str, limit: int = 10):
     """全局模糊搜索：在分类、品牌、型号中匹配关键词"""
     like = f"%{keyword}%"

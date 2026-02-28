@@ -51,7 +51,7 @@ const statCards = ref([
 ])
 
 const quickActions = [
-  { title: '录入 SKU', type: 'primary', icon: 'Plus', path: '/sku' },
+  { title: '收货录入', type: 'primary', icon: 'DocumentAdd', path: '/receiving' },
   { title: '配件贴码', type: 'success', icon: 'Ticket', path: '/items' },
   { title: '扫码上架', type: 'warning', icon: 'Top', path: '/inventory' },
   { title: '扫码出库', type: 'danger', icon: 'Van', path: '/outbound' },

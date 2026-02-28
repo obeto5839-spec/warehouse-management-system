@@ -20,6 +20,10 @@ export function getBrands(category) {
   return request.get('/skus/brands', { params: { category } })
 }
 
+export function getModels(category, brand) {
+  return request.get('/skus/models', { params: { category, brand } })
+}
+
 export function getPropertySchema(category) {
   const params = category ? { category } : {}
   return request.get('/skus/property-schema', { params })

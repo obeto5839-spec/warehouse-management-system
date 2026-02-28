@@ -48,6 +48,25 @@ CATEGORY_PROPERTY_SCHEMA: Dict[str, List[Dict[str, Any]]] = {
         {"key": "type", "label": "散热方式", "placeholder": "风冷/水冷", "required": True, "type": "select", "options": ["风冷", "水冷-120", "水冷-240", "水冷-360"]},
         {"key": "socket_support", "label": "兼容插槽", "placeholder": "如 LGA1700/AM5", "required": True, "type": "input"},
     ],
+    "显示器": [
+        {"key": "size", "label": "尺寸", "placeholder": "如 27寸", "required": True, "type": "input"},
+        {"key": "resolution", "label": "分辨率", "placeholder": "如 2560x1440", "required": True, "type": "select", "options": ["1920x1080", "2560x1440", "3840x2160", "3440x1440"]},
+        {"key": "refresh_rate", "label": "刷新率", "placeholder": "如 165Hz", "required": False, "type": "select", "options": ["60Hz", "75Hz", "144Hz", "165Hz", "240Hz"]},
+        {"key": "panel_type", "label": "面板类型", "placeholder": "如 IPS", "required": False, "type": "select", "options": ["IPS", "VA", "TN", "OLED", "Mini LED"]},
+    ],
+    "键盘": [
+        {"key": "switch_type", "label": "轴体", "placeholder": "如 红轴/茶轴", "required": False, "type": "select", "options": ["红轴", "茶轴", "青轴", "黑轴", "银轴", "薄膜", "其他"]},
+        {"key": "connection", "label": "连接方式", "placeholder": "有线/无线", "required": False, "type": "select", "options": ["有线", "无线2.4G", "蓝牙", "三模"]},
+        {"key": "layout", "label": "配列", "placeholder": "如 104键", "required": False, "type": "select", "options": ["104键", "87键", "68键", "61键", "小键盘"]},
+    ],
+    "鼠标": [
+        {"key": "connection", "label": "连接方式", "placeholder": "有线/无线", "required": False, "type": "select", "options": ["有线", "无线2.4G", "蓝牙", "三模"]},
+        {"key": "dpi", "label": "DPI", "placeholder": "如 25600", "required": False, "type": "input"},
+    ],
+    "耳机": [
+        {"key": "type", "label": "类型", "placeholder": "头戴/入耳", "required": False, "type": "select", "options": ["头戴式", "入耳式", "耳挂式"]},
+        {"key": "connection", "label": "连接方式", "placeholder": "有线/无线", "required": False, "type": "select", "options": ["有线3.5mm", "有线USB", "无线2.4G", "蓝牙", "三模"]},
+    ],
 }
 
 
