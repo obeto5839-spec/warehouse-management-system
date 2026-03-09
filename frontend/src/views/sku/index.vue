@@ -33,7 +33,7 @@
         </el-select>
         <el-input
           v-model="searchForm.keyword"
-          placeholder="型号关键词搜索"
+          placeholder="型号/系列关键词搜索"
           clearable
           style="width: 220px"
           @keyup.enter="handleSearch"
@@ -46,10 +46,16 @@
     <el-card shadow="never" style="margin-top: 16px">
       <el-table :data="skuList" v-loading="loading" stripe>
         <el-table-column prop="id" label="ID" width="70" />
-        <el-table-column prop="category" label="分类" width="100" />
-        <el-table-column prop="brand" label="品牌" width="120" />
-        <el-table-column prop="model_name" label="型号" width="180" />
-        <el-table-column label="规格参数" min-width="280">
+        <el-table-column prop="category" label="分类" width="90" />
+        <el-table-column prop="brand" label="品牌" width="100" />
+        <el-table-column prop="series" label="系列" width="120">
+          <template #default="{ row }">
+            <span v-if="row.series">{{ row.series }}</span>
+            <span v-else class="text-muted">-</span>
+          </template>
+        </el-table-column>
+        <el-table-column prop="model_name" label="型号" width="160" />
+        <el-table-column label="规格" min-width="240">
           <template #default="{ row }">
             <template v-if="row.properties && Object.keys(row.properties).length > 0">
               <el-tag
@@ -105,11 +111,21 @@
           <div v-if="!createForm.category" class="field-hint">请先选择分类</div>
         </el-form-item>
 
+        <!-- 系列 -->
+        <el-form-item label="系列">
+          <el-input
+            v-model="createForm.series"
+            placeholder="如：雪豹、酷睿、ROG STRIX、凌霜（选填）"
+            :disabled="!createForm.brand"
+          />
+          <div class="field-hint">品牌下的产品系列，没有可留空</div>
+        </el-form-item>
+
         <!-- 型号 -->
         <el-form-item label="型号" required>
           <el-input
             v-model="createForm.model_name"
-            placeholder="例如：RTX 3060 12G、i5-13400F"
+            placeholder="如：RTX 4060 Ti、i5-13490F、B760I GAMING"
             :disabled="!createForm.brand"
           />
           <div v-if="!createForm.brand" class="field-hint">请先选择品牌</div>
@@ -117,7 +133,7 @@
 
         <!-- 动态规格参数区域 -->
         <el-divider v-if="currentPropertyFields.length > 0" content-position="left">
-          规格参数
+          规格参数（选填）
         </el-divider>
 
         <el-form-item
@@ -180,7 +196,7 @@ const searchBrandOptions = ref([])
 const createBrandOptions = ref([])
 const searchForm = ref({ category: '', brand: '', keyword: '' })
 
-const createForm = ref({ category: '', brand: '', model_name: '', properties: {} })
+const createForm = ref({ category: '', brand: '', series: '', model_name: '', properties: {} })
 
 // 全部分类的属性 schema 缓存（用于表格中 label 映射）
 const allPropertySchema = ref({})
@@ -231,6 +247,7 @@ function onSearchCategoryChange(val) {
 // ---- 新增弹窗分类变化 → 加载品牌 + 动态字段 ----
 function onCreateCategoryChange(val) {
   createForm.value.brand = ''
+  createForm.value.series = ''
   createForm.value.model_name = ''
   createForm.value.properties = {}
   fetchBrands(val, createBrandOptions)
@@ -261,7 +278,7 @@ function openCreateDialog() {
 
 // ---- 重置表单 ----
 function resetCreateForm() {
-  createForm.value = { category: '', brand: '', model_name: '', properties: {} }
+  createForm.value = { category: '', brand: '', series: '', model_name: '', properties: {} }
   createBrandOptions.value = []
   currentPropertyFields.value = []
 }

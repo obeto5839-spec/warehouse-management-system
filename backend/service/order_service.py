@@ -1,7 +1,7 @@
 import json
 from sqlalchemy.orm import Session
 from database.crud.order_crud import (
-    create_order, get_order, get_orders, update_order, delete_order, count_orders_by_status
+    create_order, get_order, get_orders, update_order, delete_order, count_orders_by_status, count_orders
 )
 from database.crud.sku_crud import get_sku_by_exact_match
 from database.models.sku_model import SKU
@@ -111,9 +111,17 @@ class OrderService:
 
     async def list(self, skip: int = 0, limit: int = 50,
                    order_status: Optional[str] = None,
-                   platform: Optional[str] = None):
-        items = get_orders(self.db, skip, limit, order_status, platform)
+                   platform: Optional[str] = None,
+                   customer_id: Optional[str] = None,
+                   order_type: Optional[str] = None):
+        items = get_orders(self.db, skip, limit, order_status, platform, customer_id, order_type)
         return [OrderResponse.model_validate(i) for i in items]
+
+    async def count(self, order_status: Optional[str] = None,
+                    platform: Optional[str] = None,
+                    customer_id: Optional[str] = None,
+                    order_type: Optional[str] = None) -> int:
+        return count_orders(self.db, order_status, platform, customer_id, order_type)
 
     async def update(self, order_id: int, data: OrderUpdate):
         db_order = update_order(self.db, order_id, data)

@@ -61,117 +61,91 @@
 
             <div class="divider"></div>
 
-            <!-- ========== 台式整机：逐件子向导 ========== -->
+            <!-- ========== 台式整机：智能清单式录入 ========== -->
             <template v-if="form.order_type === '台式整机'">
-              <!-- 配件录入卡片 (非汇总状态) -->
-              <div v-if="compStep <= COMPONENTS.length" class="comp-card">
-                <div class="comp-header">
-                  <div class="comp-progress">
-                    <span class="comp-idx">{{ compStep }}/{{ COMPONENTS.length }}</span>
-                    <span class="comp-name">{{ currentComp.icon }} {{ currentComp.label }}</span>
+              <div class="line-list-section">
+                <h4 class="line-list-title">📋 台式配置清单（输入关键词自动匹配）</h4>
+                <div class="line-list">
+                  <div v-for="(comp, i) in COMPONENTS" :key="comp.key" class="line-input-group"
+                    :class="{ 'line-matched': lineMatchedSku[comp.key] }">
+                    <span class="line-label">{{ comp.shortLabel }}</span>
+                    <span class="line-divider"></span>
+                    <el-select
+                      v-model="lineInputs[comp.key]"
+                      filterable
+                      allow-create
+                      default-first-option
+                      remote
+                      :remote-method="(q) => onLineSearch(comp.key, comp.skuCategory, q)"
+                      :loading="lineSearchLoading[comp.key]"
+                      :placeholder="comp.placeholder"
+                      style="flex:1"
+                      class="line-select-input"
+                      @change="(val) => onLineSelect(comp.key, val)"
+                      @clear="onLineClear(comp.key)"
+                      clearable
+                      :reserve-keyword="false"
+                    >
+                      <el-option
+                        v-for="opt in lineSuggestions[comp.key]"
+                        :key="opt.id"
+                        :label="opt.label"
+                        :value="opt.label"
+                      >
+                        <div class="suggestion-item">
+                          <span class="suggestion-brand">{{ opt.brand }}</span>
+                          <span class="suggestion-model">{{ opt.series ? opt.series + ' ' : '' }}{{ opt.model_name }}</span>
+                        </div>
+                      </el-option>
+                    </el-select>
+                    <span v-if="lineMatchedSku[comp.key]" class="line-match-badge">✓ 已匹配</span>
                   </div>
-                  <el-button link type="info" @click="skipComponent">跳过 &rarr;</el-button>
-                </div>
-                <div class="comp-progress-bar">
-                  <div class="comp-progress-fill" :style="{ width: `${(compStep / COMPONENTS.length) * 100}%` }"></div>
-                </div>
 
-                <!-- 品牌 -->
-                <div class="spec-field">
-                  <label class="spec-label">品牌</label>
-                  <el-select
-                    v-model="compData[compStep - 1].brand"
-                    filterable allow-create default-first-option
-                    placeholder="搜索或输入品牌"
-                    style="width: 100%"
-                    @change="onBrandChange"
-                  >
-                    <el-option v-for="b in brandOptions" :key="b" :label="b" :value="b" />
-                  </el-select>
-                </div>
-
-                <!-- 系列（可选） -->
-                <div class="spec-field">
-                  <label class="spec-label">系列（选填）</label>
-                  <el-input
-                    v-model="compData[compStep - 1].series"
-                    placeholder="如 ROG / TUF / 巨齿鲨（可留空）"
-                    style="width: 100%"
-                  />
-                </div>
-
-                <!-- 型号 -->
-                <div class="spec-field">
-                  <label class="spec-label">型号</label>
-                  <el-select
-                    v-model="compData[compStep - 1].model"
-                    filterable allow-create default-first-option
-                    :disabled="!compData[compStep - 1].brand"
-                    placeholder="搜索或输入型号"
-                    style="width: 100%"
-                    :loading="modelLoading"
-                    @change="onModelChange"
-                  >
-                    <el-option v-for="m in modelOptions" :key="m.model_name" :label="m.model_name" :value="m.model_name" />
-                  </el-select>
-                </div>
-
-                <!-- 动态规格参数 -->
-                <div v-if="currentSpecFields.length > 0" class="spec-dynamic">
-                  <el-row :gutter="12">
-                    <el-col :span="12" v-for="field in currentSpecFields" :key="field.key">
-                      <div class="spec-field">
-                        <label class="spec-label">{{ field.label }}</label>
-                        <el-select
-                          v-if="field.type === 'select'"
-                          v-model="compData[compStep - 1].specs[field.key]"
-                          filterable allow-create default-first-option
-                          :placeholder="field.placeholder" style="width:100%">
-                          <el-option v-for="o in (field.options || [])" :key="o" :label="o" :value="o" />
-                        </el-select>
-                        <el-input v-else v-model="compData[compStep - 1].specs[field.key]" :placeholder="field.placeholder" />
-                      </div>
-                    </el-col>
-                  </el-row>
-                </div>
-
-                <!-- 配件子向导底部按钮 -->
-                <div class="comp-footer">
-                  <el-button v-if="compStep > 1" @click="compStep--; loadCompData()">上一件</el-button>
-                  <el-button type="primary" @click="confirmComponent">
-                    {{ compStep < COMPONENTS.length ? '下一件' : '录入完成' }}
-                  </el-button>
-                </div>
-              </div>
-
-              <!-- 汇总面板 -->
-              <div v-else class="summary-panel">
-                <h4 class="summary-title">已录入配件汇总</h4>
-                <div v-for="(comp, i) in COMPONENTS" :key="i" class="summary-item" :class="{ skipped: !compData[i].brand }">
-                  <span class="summary-icon">{{ comp.icon }}</span>
-                  <span class="summary-label">{{ comp.label }}</span>
-                  <span v-if="compData[i].brand" class="summary-value">
-                    {{ compData[i].brand }} {{ compData[i].series ? compData[i].series + ' ' : '' }}{{ compData[i].model }}
-                  </span>
-                  <el-tag v-else size="small" type="info">已跳过</el-tag>
-                  <el-button link type="primary" size="small" @click="compStep = i + 1; loadCompData()">编辑</el-button>
-                </div>
-
-                <!-- 额外配件 -->
-                <div v-if="extraItems.length > 0" class="extra-list">
-                  <div class="divider"></div>
-                  <h4 class="summary-title">额外配件</h4>
-                  <div v-for="(ext, i) in extraItems" :key="i" class="summary-item">
-                    <span class="summary-icon">📎</span>
-                    <span class="summary-label">{{ ext.type }}</span>
-                    <span class="summary-value">{{ ext.brand }} {{ ext.model }}</span>
-                    <el-button link type="danger" size="small" @click="extraItems.splice(i, 1)">删除</el-button>
+                  <!-- 动态添加的额外配件行 -->
+                  <div v-for="(extra, i) in extraLineItems" :key="'extra-' + i" class="line-input-group">
+                    <select v-model="extra.type" class="line-type-select">
+                      <option value="显示器">显示器</option>
+                      <option value="风扇">风扇</option>
+                      <option value="键盘">键盘</option>
+                      <option value="鼠标">鼠标</option>
+                      <option value="耳机">耳机</option>
+                      <option value="其他">其他</option>
+                    </select>
+                    <span class="line-divider"></span>
+                    <el-select
+                      v-model="extra.desc"
+                      filterable
+                      allow-create
+                      default-first-option
+                      remote
+                      :remote-method="(q) => onExtraLineSearch(i, extra.type, q)"
+                      :loading="extra._loading"
+                      placeholder="输入型号及描述"
+                      style="flex:1"
+                      class="line-select-input"
+                      clearable
+                      :reserve-keyword="false"
+                    >
+                      <el-option
+                        v-for="opt in (extra._suggestions || [])"
+                        :key="opt.id"
+                        :label="opt.label"
+                        :value="opt.label"
+                      >
+                        <div class="suggestion-item">
+                          <span class="suggestion-brand">{{ opt.brand }}</span>
+                          <span class="suggestion-model">{{ opt.series ? opt.series + ' ' : '' }}{{ opt.model_name }}</span>
+                        </div>
+                      </el-option>
+                    </el-select>
+                    <button class="line-remove-btn" @click="extraLineItems.splice(i, 1)">&times;</button>
                   </div>
                 </div>
 
-                <el-button class="add-extra-btn" @click="showExtraDialog = true">
-                  + 添加额外配件（显示器/键盘/鼠标等）
-                </el-button>
+                <!-- 添加额外配件按钮 -->
+                <button class="line-add-btn" @click="addExtraLine">
+                  <span class="line-add-icon">+</span> 添加其他配件（如风扇、显示器、外设等）
+                </button>
               </div>
             </template>
 
@@ -216,7 +190,7 @@
                   <span class="summary-icon">🔧</span>
                   <span class="summary-label">{{ getPartsLabel(p.subType) }}</span>
                   <span class="summary-value">
-                    {{ p.brand }} {{ p.series ? p.series + ' ' : '' }}{{ p.model }}
+                    {{ p.brand }}{{ p.series ? ' ' + p.series : '' }}{{ p.model ? ' ' + p.model : '' }}{{ p.spec ? ' ' + p.spec : '' }}
                   </span>
                   <el-button link type="primary" size="small" @click="editPart(i)">编辑</el-button>
                   <el-button link type="danger" size="small" @click="partsList.splice(i, 1)">删除</el-button>
@@ -245,47 +219,60 @@
                   </el-select>
                 </div>
 
-                <!-- 品牌 -->
+                <!-- 型号（智能搜索，输入关键词自动匹配并回填品牌/系列） -->
                 <div class="spec-field">
-                  <label class="spec-label">品牌</label>
+                  <label class="spec-label">型号 <span style="color:#999;font-weight:400">（输入关键词搜索，如 12700、4060Ti）</span></label>
+                  <el-select
+                    v-model="currentPart.model"
+                    filterable allow-create default-first-option
+                    remote
+                    :remote-method="onPartModelSearch"
+                    :disabled="!currentPart.subType"
+                    placeholder="输入型号关键词搜索..."
+                    style="width: 100%"
+                    :loading="partModelLoading"
+                    @change="onPartModelSelect"
+                    clearable
+                    :reserve-keyword="false"
+                  >
+                    <el-option
+                      v-for="m in partModelOptions"
+                      :key="m.id"
+                      :label="m.label"
+                      :value="m.model_name"
+                    >
+                      <div class="suggestion-item">
+                        <span class="suggestion-brand">{{ m.brand }}</span>
+                        <span class="suggestion-model">{{ m.series ? m.series + ' ' : '' }}{{ m.model_name }}</span>
+                      </div>
+                    </el-option>
+                  </el-select>
+                </div>
+
+                <!-- 品牌（自动回填或手动输入） -->
+                <div class="spec-field">
+                  <label class="spec-label">品牌 <span v-if="currentPart.sku_id" style="color:#16a34a;font-size:11px">✓ 已自动填入</span></label>
                   <el-select
                     v-model="currentPart.brand"
                     filterable allow-create default-first-option
-                    placeholder="搜索或输入品牌"
+                    placeholder="搜索或输入品牌（选型号后自动填入）"
                     style="width: 100%"
                     :disabled="!currentPart.subType"
-                    @change="onPartBrandChange"
                   >
                     <el-option v-for="b in partBrandOptions" :key="b" :label="b" :value="b" />
                   </el-select>
                 </div>
 
-                <!-- 系列（选填） -->
+                <!-- 系列（自动回填或手动输入） -->
                 <div class="spec-field">
-                  <label class="spec-label">系列（选填）</label>
-                  <el-input v-model="currentPart.series" placeholder="如 ROG / TUF / 巨齿鲨（可留空）" />
+                  <label class="spec-label">系列（选填） <span v-if="currentPart.sku_id && currentPart.series" style="color:#16a34a;font-size:11px">✓ 已自动填入</span></label>
+                  <el-input v-model="currentPart.series" placeholder="如 雪豹 / 酷睿 / ROG STRIX / 凌霜（可留空）" />
                 </div>
 
-                <!-- 型号 -->
-                <div class="spec-field">
-                  <label class="spec-label">型号</label>
-                  <el-select
-                    v-model="currentPart.model"
-                    filterable allow-create default-first-option
-                    :disabled="!currentPart.brand"
-                    placeholder="搜索或输入型号"
-                    style="width: 100%"
-                    :loading="partModelLoading"
-                    @change="onPartModelChange"
-                  >
-                    <el-option v-for="m in partModelOptions" :key="m.model_name" :label="m.model_name" :value="m.model_name" />
-                  </el-select>
-                </div>
-
-                <!-- 动态规格参数 -->
+                <!-- 规格（简化的文本输入） -->
                 <div v-if="currentPartSpecFields.length > 0" class="spec-dynamic">
                   <el-row :gutter="12">
-                    <el-col :span="12" v-for="field in currentPartSpecFields" :key="field.key">
+                    <el-col :span="currentPartSpecFields.length === 1 ? 24 : 12" v-for="field in currentPartSpecFields" :key="field.key">
                       <div class="spec-field">
                         <label class="spec-label">{{ field.label }}</label>
                         <el-select
@@ -299,12 +286,6 @@
                       </div>
                     </el-col>
                   </el-row>
-                </div>
-
-                <!-- 备注 -->
-                <div class="spec-field">
-                  <label class="spec-label">备注</label>
-                  <el-input v-model="currentPart.note" placeholder="选填备注" />
                 </div>
 
                 <!-- 按钮 -->
@@ -322,40 +303,16 @@
               </el-button>
             </template>
 
-            <!-- 通用：成色 + 功能状态 + 价格（所有类型共用） -->
+            <!-- 通用：备注（所有类型共用） -->
             <div class="divider"></div>
-            <el-row :gutter="16">
-              <el-col :span="12">
-                <div class="spec-field">
-                  <label class="spec-label">成色鉴定</label>
-                  <el-select v-model="form.condition_grade" placeholder="选择成色" style="width: 100%">
-                    <el-option label="全新未拆封" value="全新未拆封" />
-                    <el-option label="充新 / 仅拆封" value="充新" />
-                    <el-option label="轻微使用痕迹" value="轻微使用痕迹" />
-                    <el-option label="明显使用痕迹" value="明显使用痕迹" />
-                    <el-option label="战损成色" value="战损成色" />
-                  </el-select>
-                </div>
-              </el-col>
-              <el-col :span="12">
-                <div class="spec-field">
-                  <label class="spec-label">功能状态</label>
-                  <el-select v-model="form.functional_status" placeholder="选择状态" style="width: 100%">
-                    <el-option label="功能完好无维修" value="功能完好" />
-                    <el-option label="维修过，可正常使用" value="维修过可用" />
-                    <el-option label="部分功能故障" value="部分故障" />
-                    <el-option label="完全损坏" value="完全损坏" />
-                  </el-select>
-                </div>
-              </el-col>
-            </el-row>
-            <div class="field-block" style="margin-top: 20px">
-              <label class="field-title">预估回收价格</label>
-              <div class="price-input-big">
-                <span class="price-sign">¥</span>
-                <el-input-number v-model="form.price" :precision="2" :min="0" :step="100" :controls="false"
-                  placeholder="0.00" size="large" class="price-field" />
-              </div>
+            <div class="field-block">
+              <label class="field-title">备注</label>
+              <el-input
+                v-model="form.remark"
+                type="textarea"
+                :rows="3"
+                placeholder="填写整机/散件的成色、问题描述等备注信息"
+              />
             </div>
           </div>
 
@@ -392,10 +349,10 @@
             <div class="field-block">
               <label class="field-title">4. 订单系统状态</label>
               <el-select v-model="form.order_status" style="width: 100%" size="large">
-                <el-option label="待收货 / 测试中" value="待收货" />
-                <el-option label="测试通过 / 待打款" value="待打款" />
-                <el-option label="已打款 / 入库完毕" value="已完成" />
-                <el-option label="验机不符 / 退货拦截" value="退货" />
+                <el-option label="已打款，在途中" value="已打款，在途中" />
+                <el-option label="未打款，在途中" value="未打款，在途中" />
+                <el-option label="已打款，入库完毕" value="已打款，入库完毕" />
+                <el-option label="验机不符，退货拦截" value="验机不符，退货拦截" />
               </el-select>
             </div>
           </div>
@@ -449,7 +406,7 @@
 <script setup>
 import { ref, computed, reactive, watch } from 'vue'
 import { createOrder } from '@/api/order'
-import { getBrands, getModels, getPropertySchema } from '@/api/sku'
+import { getBrands, getModels, getPropertySchema, searchSkus } from '@/api/sku'
 import { ElMessage } from 'element-plus'
 
 // ---- 主向导 ----
@@ -462,8 +419,8 @@ function goToStep(step) { if (step <= currentStep.value) currentStep.value = ste
 
 // ---- 选项数据 ----
 const platformOptions = [
-  { value: '闲鱼', label: '闲鱼', icon: '🐟' },
   { value: '淘宝', label: '淘宝', icon: '🛒' },
+  { value: '闲鱼', label: '闲鱼', icon: '🐟' },
   { value: '微信', label: '微信', icon: '💬' },
   { value: '线下同城', label: '线下同城', icon: '🤝' },
 ]
@@ -480,14 +437,14 @@ const shippingOptions = [
 
 // ---- 八大件定义 ----
 const COMPONENTS = [
-  { key: 'cpu', label: 'CPU 处理器', icon: '🧠', skuCategory: 'CPU' },
-  { key: 'gpu', label: '显卡 GPU', icon: '🎮', skuCategory: '显卡' },
-  { key: 'motherboard', label: '主板', icon: '🔲', skuCategory: '主板' },
-  { key: 'ram', label: '内存', icon: '📊', skuCategory: '内存' },
-  { key: 'disk', label: '硬盘', icon: '💾', skuCategory: '硬盘' },
-  { key: 'psu', label: '电源', icon: '🔌', skuCategory: '电源' },
-  { key: 'cooler', label: '散热器', icon: '❄️', skuCategory: '散热器' },
-  { key: 'case', label: '机箱', icon: '📦', skuCategory: '机箱' },
+  { key: 'cpu', label: 'CPU 处理器', shortLabel: 'CPU', icon: '🧠', skuCategory: 'CPU', placeholder: '如：英特尔 酷睿 i5-13490F' },
+  { key: 'gpu', label: '显卡 GPU', shortLabel: '显卡', icon: '🎮', skuCategory: '显卡', placeholder: '如：华硕 雪豹 RTX 4060 Ti O16G' },
+  { key: 'motherboard', label: '主板', shortLabel: '主板', icon: '🔲', skuCategory: '主板', placeholder: '如：华硕 ROG STRIX B760I GAMING WIFI-D5' },
+  { key: 'ram', label: '内存', shortLabel: '内存', icon: '📊', skuCategory: '内存', placeholder: '如：宏碁 凌霜 32G(16*2)6400C32 海力士A-DIE' },
+  { key: 'disk', label: '硬盘', shortLabel: '固态', icon: '💾', skuCategory: '硬盘', placeholder: '如：宏碁 掠夺者GM7 1TB PCIE4.0 7200M/S' },
+  { key: 'psu', label: '电源', shortLabel: '电源', icon: '🔌', skuCategory: '电源', placeholder: '如：联力 SFX 750W 金牌全模黑色' },
+  { key: 'cooler', label: '散热器', shortLabel: '散热', icon: '❄️', skuCategory: '散热器', placeholder: '如：乔思伯 CR1400' },
+  { key: 'case', label: '机箱', shortLabel: '机箱', icon: '📦', skuCategory: '机箱', placeholder: '如：机械大师 C24小方糖 银色' },
 ]
 
 function makeEmptyCompData() {
@@ -511,6 +468,105 @@ const currentSpecFields = computed(() => {
 const extraItems = ref([])
 const showExtraDialog = ref(false)
 const extraForm = ref({ type: '', brand: '', model: '', note: '' })
+
+// ---- 台式整机：清单式单行录入数据 ----
+function makeEmptyLineInputs() {
+  const obj = {}
+  COMPONENTS.forEach(c => { obj[c.key] = '' })
+  return obj
+}
+const lineInputs = reactive(makeEmptyLineInputs())
+const extraLineItems = ref([])
+
+function addExtraLine() {
+  extraLineItems.value.push({ type: '其他', desc: '', _loading: false, _suggestions: [] })
+}
+
+// ---- 台式整机：智能搜索状态 ----
+const lineSuggestions = reactive({})
+const lineSearchLoading = reactive({})
+const lineMatchedSku = reactive({})
+const lineSearchCache = reactive({}) // 缓存搜索结果中的原始SKU数据
+COMPONENTS.forEach(c => {
+  lineSuggestions[c.key] = []
+  lineSearchLoading[c.key] = false
+  lineMatchedSku[c.key] = false
+  lineSearchCache[c.key] = []
+})
+
+// 防抖定时器
+const lineSearchTimers = {}
+
+async function onLineSearch(compKey, skuCategory, query) {
+  // 清除之前的定时器
+  if (lineSearchTimers[compKey]) clearTimeout(lineSearchTimers[compKey])
+  if (!query || query.length < 1) {
+    lineSuggestions[compKey] = []
+    return
+  }
+  lineSearchLoading[compKey] = true
+  // 300ms 防抖
+  lineSearchTimers[compKey] = setTimeout(async () => {
+    try {
+      const res = await searchSkus({ category: skuCategory, keyword: query, limit: 15 })
+      const items = res.data || []
+      lineSearchCache[compKey] = items
+      lineSuggestions[compKey] = items.map(s => ({
+        id: s.id,
+        brand: s.brand,
+        series: s.series || '',
+        model_name: s.model_name,
+        label: `${s.brand}${s.series ? ' ' + s.series : ''} ${s.model_name}`,
+        properties: s.properties,
+      }))
+    } catch {
+      lineSuggestions[compKey] = []
+    } finally {
+      lineSearchLoading[compKey] = false
+    }
+  }, 300)
+}
+
+function onLineSelect(compKey, val) {
+  // 检查是否匹配了某个建议项
+  const matched = lineSuggestions[compKey].find(s => s.label === val)
+  lineMatchedSku[compKey] = !!matched
+}
+
+function onLineClear(compKey) {
+  lineMatchedSku[compKey] = false
+  lineSuggestions[compKey] = []
+}
+
+// 额外配件行的搜索
+const extraSearchTimers = {}
+async function onExtraLineSearch(index, type, query) {
+  const extra = extraLineItems.value[index]
+  if (!extra) return
+  if (extraSearchTimers[index]) clearTimeout(extraSearchTimers[index])
+  if (!query || query.length < 1) {
+    extra._suggestions = []
+    return
+  }
+  extra._loading = true
+  extraSearchTimers[index] = setTimeout(async () => {
+    try {
+      const res = await searchSkus({ category: type, keyword: query, limit: 10 })
+      const items = res.data || []
+      extra._suggestions = items.map(s => ({
+        id: s.id,
+        brand: s.brand,
+        series: s.series || '',
+        model_name: s.model_name,
+        label: `${s.brand}${s.series ? ' ' + s.series : ''} ${s.model_name}`,
+      }))
+    } catch {
+      extra._suggestions = []
+    } finally {
+      extra._loading = false
+    }
+  }, 300)
+}
 
 // ---- 配件子向导数据加载 ----
 async function loadCompData() {
@@ -564,6 +620,7 @@ function onModelChange(modelName) {
   const matched = allModelData.value.find(m => m.model_name === modelName)
   if (matched) {
     current.sku_id = matched.id
+    current.series = matched.series || ''
     current.specs = { ...(matched.properties || {}) }
   } else {
     current.sku_id = null
@@ -597,10 +654,9 @@ function confirmComponent() {
 function onTypeChange(val) {
   form.value.order_type = val
   if (val === '台式整机') {
-    compStep.value = 1
-    compData.value = makeEmptyCompData()
-    extraItems.value = []
-    loadCompData()
+    // 重置清单式录入数据
+    COMPONENTS.forEach(c => { lineInputs[c.key] = '' })
+    extraLineItems.value = []
   } else if (val === '散件') {
     partsList.value = []
     currentPart.value = makeEmptyPart()
@@ -648,7 +704,7 @@ const partModelLoading = ref(false)
 const allPartModelData = ref([])
 
 function makeEmptyPart() {
-  return { subType: '', brand: '', series: '', model: '', sku_id: null, specs: {}, note: '' }
+  return { subType: '', brand: '', series: '', model: '', sku_id: null, specs: {}, spec: '', note: '' }
 }
 
 function getPartsLabel(subTypeValue) {
@@ -690,30 +746,45 @@ async function onPartSubTypeChange() {
   }
 }
 
-async function onPartBrandChange(brand) {
-  currentPart.value.series = ''
-  currentPart.value.model = ''
-  currentPart.value.sku_id = null
-  currentPart.value.specs = {}
-  partModelOptions.value = []
-  allPartModelData.value = []
-  if (!brand) return
+// 散件：型号远程搜索（输入关键词 → 搜索该分类下的SKU → 显示建议）
+let partModelSearchTimer = null
+function onPartModelSearch(query) {
+  if (partModelSearchTimer) clearTimeout(partModelSearchTimer)
+  if (!query || query.length < 1) {
+    partModelOptions.value = []
+    return
+  }
   const cat = getPartsSkuCategory(currentPart.value.subType)
   if (!cat) return
   partModelLoading.value = true
-  try {
-    const res = await getModels(cat, brand)
-    allPartModelData.value = res.data || []
-    partModelOptions.value = allPartModelData.value
-  } finally {
-    partModelLoading.value = false
-  }
+  partModelSearchTimer = setTimeout(async () => {
+    try {
+      const res = await searchSkus({ category: cat, keyword: query, limit: 15 })
+      const items = res.data || []
+      allPartModelData.value = items
+      partModelOptions.value = items.map(s => ({
+        id: s.id,
+        brand: s.brand,
+        series: s.series || '',
+        model_name: s.model_name,
+        label: `${s.brand}${s.series ? ' ' + s.series : ''} ${s.model_name}`,
+        properties: s.properties,
+      }))
+    } catch {
+      partModelOptions.value = []
+    } finally {
+      partModelLoading.value = false
+    }
+  }, 300)
 }
 
-function onPartModelChange(modelName) {
-  const matched = allPartModelData.value.find(m => m.model_name === modelName)
+// 散件：选中型号后自动回填品牌、系列、规格
+function onPartModelSelect(modelName) {
+  const matched = partModelOptions.value.find(m => m.model_name === modelName)
   if (matched) {
     currentPart.value.sku_id = matched.id
+    currentPart.value.brand = matched.brand
+    currentPart.value.series = matched.series || ''
     currentPart.value.specs = { ...(matched.properties || {}) }
   } else {
     currentPart.value.sku_id = null
@@ -738,16 +809,14 @@ function editPart(index) {
   currentPart.value = { ...p, specs: { ...p.specs } }
   partsEditIndex.value = index
   partsEditing.value = true
+  // 加载该分类的品牌列表和规格定义
   onPartSubTypeChange().then(() => {
-    if (p.brand) {
-      onPartBrandChange(p.brand).then(() => {
-        currentPart.value.brand = p.brand
-        currentPart.value.series = p.series
-        currentPart.value.model = p.model
-        currentPart.value.sku_id = p.sku_id
-        currentPart.value.specs = { ...p.specs }
-      })
-    }
+    // 恢复编辑数据（onPartSubTypeChange 会清空，所以需要重新赋值）
+    currentPart.value.brand = p.brand
+    currentPart.value.series = p.series
+    currentPart.value.model = p.model
+    currentPart.value.sku_id = p.sku_id
+    currentPart.value.specs = { ...p.specs }
   })
 }
 
@@ -780,9 +849,9 @@ const partsSubOptions = [
 
 // ---- 主表单 ----
 const form = ref({
-  platform: '闲鱼', customer_id: '', phone: '', region: '',
-  order_type: '台式整机', condition_grade: '轻微使用痕迹', functional_status: '功能完好',
-  price: 0, shipping_method: '顺丰', payment_amount: 0, shipping_fee: 0, order_status: '待收货',
+  platform: '淘宝', customer_id: '', phone: '', region: '',
+  order_type: '台式整机', remark: '',
+  price: 0, shipping_method: '顺丰', payment_amount: 0, shipping_fee: 0, order_status: '未打款，在途中',
 })
 
 function handleNext() {
@@ -790,10 +859,7 @@ function handleNext() {
     ElMessage.warning('请填写卖家ID')
     return
   }
-  if (currentStep.value === 2 && form.value.order_type === '台式整机' && compStep.value <= COMPONENTS.length) {
-    ElMessage.warning('请先完成所有配件的录入（可跳过不需要的）')
-    return
-  }
+  // 台式整机清单模式无需额外校验，直接放行
   if (currentStep.value === 2 && form.value.order_type === '散件') {
     if (partsEditing.value && currentPart.value.subType) {
       ElMessage.warning('当前有未保存的配件，请先确认或取消')
@@ -811,12 +877,14 @@ function handleNext() {
 function buildConfigDetail() {
   const type = form.value.order_type
   if (type === '台式整机') {
-    const components = COMPONENTS.map((comp, i) => {
-      const d = compData.value[i]
-      if (!d.brand) return null
-      return { type: comp.skuCategory, brand: d.brand, series: d.series, model: d.model, specs: d.specs }
+    const components = COMPONENTS.map(comp => {
+      const desc = lineInputs[comp.key]
+      if (!desc || !desc.trim()) return null
+      return { type: comp.skuCategory, label: comp.shortLabel, description: desc.trim() }
     }).filter(Boolean)
-    const extras = extraItems.value.map(e => ({ type: e.type, brand: e.brand, model: e.model, note: e.note }))
+    const extras = extraLineItems.value
+      .filter(e => e.desc && e.desc.trim())
+      .map(e => ({ type: e.type, description: e.desc.trim() }))
     return JSON.stringify({ components, extras })
   }
   if (type === '笔记本') {
@@ -846,13 +914,15 @@ function buildConfigDetail() {
 
 function resetAll() {
   form.value = {
-    platform: '闲鱼', customer_id: '', phone: '', region: '',
-    order_type: '台式整机', condition_grade: '轻微使用痕迹', functional_status: '功能完好',
-    price: 0, shipping_method: '顺丰', payment_amount: 0, shipping_fee: 0, order_status: '待收货',
+    platform: '淘宝', customer_id: '', phone: '', region: '',
+    order_type: '台式整机', remark: '',
+    price: 0, shipping_method: '顺丰', payment_amount: 0, shipping_fee: 0, order_status: '未打款，在途中',
   }
   compStep.value = 1
   compData.value = makeEmptyCompData()
   extraItems.value = []
+  COMPONENTS.forEach(c => { lineInputs[c.key] = '' })
+  extraLineItems.value = []
   Object.keys(configForm).forEach(k => delete configForm[k])
   partsList.value = []
   partsEditing.value = true
@@ -864,7 +934,8 @@ function resetAll() {
 async function handleSubmit() {
   submitLoading.value = true
   try {
-    const payload = { ...form.value, config_detail: buildConfigDetail() }
+    const { remark, ...rest } = form.value
+    const payload = { ...rest, notes: remark, config_detail: buildConfigDetail() }
     await createOrder(payload)
     ElMessage.success('入库登记成功！')
     resetAll()
@@ -945,6 +1016,81 @@ async function handleSubmit() {
 .price-field :deep(.el-input__wrapper) { box-shadow: none !important; background: transparent; }
 .price-input-big .price-field :deep(.el-input__inner) { font-size: 22px; font-weight: 700; color: #F56C6C; }
 .price-input-sm .price-field :deep(.el-input__inner) { font-size: 16px; font-weight: 600; color: #333; }
+
+/* ---- 清单式单行录入 ---- */
+.line-list-section { animation: fadeIn 0.3s ease; }
+.line-list-title { font-size: 14px; font-weight: 700; color: #333; margin-bottom: 12px; }
+.line-list { display: flex; flex-direction: column; gap: 8px; }
+.line-input-group {
+  display: flex; align-items: center; background: #f5f7fa;
+  border: 1px solid transparent; border-radius: 8px; padding: 8px 12px;
+  transition: all 0.2s;
+}
+.line-input-group:focus-within {
+  border-color: #FFDA44; background: #fff; box-shadow: 0 0 0 2px rgba(255,218,68,0.2);
+}
+.line-label {
+  width: 3.5rem; text-align: center; font-size: 13px; font-weight: 700;
+  color: #4B5563; flex-shrink: 0;
+}
+.line-divider {
+  width: 1px; height: 16px; background: #D1D5DB; margin: 0 10px; flex-shrink: 0;
+}
+.line-input {
+  flex: 1; background: transparent; border: none; outline: none;
+  font-size: 13px; color: #111827; padding: 4px 0;
+}
+.line-input::placeholder { color: #9CA3AF; }
+.line-select {
+  width: 3.5rem; text-align: center; font-size: 13px; font-weight: 700;
+  color: #4B5563; background: transparent; border: none; outline: none;
+  cursor: pointer; appearance: none; -webkit-appearance: none; flex-shrink: 0;
+}
+.line-remove-btn {
+  background: none; border: none; color: #9CA3AF; font-size: 18px; font-weight: 700;
+  cursor: pointer; padding: 0 4px; line-height: 1; transition: color 0.2s;
+}
+.line-remove-btn:hover { color: #F56C6C; }
+.line-add-btn {
+  width: 100%; margin-top: 10px; padding: 12px; border: 1px dashed #D1D5DB;
+  border-radius: 8px; background: transparent; color: #9CA3AF; font-size: 13px;
+  cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;
+  transition: all 0.2s;
+}
+.line-add-btn:hover { background: #f9fafb; color: #6B7280; border-color: #9CA3AF; }
+.line-add-btn:active { background: #f0f0f0; }
+.line-add-icon { font-size: 16px; line-height: 1; }
+
+/* ---- 智能搜索下拉样式 ---- */
+.line-select-input { flex: 1; }
+.line-select-input :deep(.el-input__wrapper) {
+  box-shadow: none !important; background: transparent; padding: 0;
+}
+.line-select-input :deep(.el-input__inner) {
+  font-size: 13px; color: #111827;
+}
+.line-select-input :deep(.el-input__suffix) { right: 0; }
+.line-input-group.line-matched {
+  background: #f0fdf4; border-color: #86efac;
+}
+.line-match-badge {
+  font-size: 11px; color: #16a34a; font-weight: 600;
+  white-space: nowrap; margin-left: 6px; flex-shrink: 0;
+}
+.suggestion-item {
+  display: flex; align-items: center; gap: 8px; font-size: 13px;
+}
+.suggestion-brand {
+  color: #6B7280; font-weight: 600; flex-shrink: 0;
+}
+.suggestion-model {
+  color: #111827; flex: 1;
+}
+.line-type-select {
+  width: 4rem; text-align: center; font-size: 13px; font-weight: 700;
+  color: #4B5563; background: transparent; border: none; outline: none;
+  cursor: pointer; flex-shrink: 0;
+}
 
 /* ---- Footer ---- */
 .wizard-footer { display: flex; gap: 12px; padding: 16px 28px; border-top: 1px solid #f0f0f0; background: #fff; }

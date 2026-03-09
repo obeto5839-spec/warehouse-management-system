@@ -1,7 +1,7 @@
 # service/skus_service.py
 from sqlalchemy.orm import Session
 from database.schemas.sku_schema import SKUCreate
-from database.crud import sku_crud  # 引入帮你干脏活累活的 crud 模块
+from database.crud import sku_crud
 
 class SKUService:
     def __init__(self, db: Session):
@@ -30,6 +30,7 @@ class SKUService:
             "id": db_sku.id,
             "category": db_sku.category,
             "brand": db_sku.brand,
+            "series": db_sku.series,
             "model_name": db_sku.model_name,
             "properties": db_sku.properties
         }
@@ -42,5 +43,12 @@ class SKUService:
         skus = sku_crud.search_skus(self.db, category, brand, keyword, limit)
 
         # 业务层负责将原始数据转化成前端需要的列表格式
-        result_list = [{"id": s.id, "model_name": s.model_name, "properties": s.properties} for s in skus]
+        result_list = [{
+            "id": s.id,
+            "category": s.category,
+            "brand": s.brand,
+            "series": s.series,
+            "model_name": s.model_name,
+            "properties": s.properties
+        } for s in skus]
         return result_list

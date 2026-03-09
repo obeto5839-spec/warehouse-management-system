@@ -72,6 +72,7 @@ const currentRoute = computed(() => route.path)
 const menuItems = [
   { path: '/dashboard', title: '首页概览', icon: 'DataBoard' },
   { path: '/receiving', title: '收货录入', icon: 'DocumentAdd' },
+  { path: '/orders', title: '订单管理', icon: 'List' },
   { path: '/sku', title: 'SKU 管理', icon: 'Cpu' },
   { path: '/items', title: '配件管理', icon: 'Ticket' },
   { path: '/machine', title: '整机管理', icon: 'Monitor' },

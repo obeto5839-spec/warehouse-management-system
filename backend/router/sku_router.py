@@ -69,8 +69,9 @@ async def autocomplete_skus(
         "id": s.id,
         "category": s.category,
         "brand": s.brand,
+        "series": s.series,
         "model_name": s.model_name,
-        "label": f"{s.category} / {s.brand} / {s.model_name}",
+        "label": f"{s.category} / {s.brand} / {(s.series + ' ') if s.series else ''}{s.model_name}",
     } for s in skus]
     return AppResult(code=200, message="success", data=result)
 
@@ -99,6 +100,7 @@ async def get_models(
     skus = get_models_by_category_brand(db, category, brand)
     result = [{
         "id": s.id,
+        "series": s.series,
         "model_name": s.model_name,
         "properties": s.properties or {},
     } for s in skus]

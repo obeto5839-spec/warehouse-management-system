@@ -17,10 +17,10 @@ class ShippingMethod(enum.Enum):
 
 
 class OrderStatus(enum.Enum):
-    PENDING = "待收货"
-    TESTING = "待打款"
-    COMPLETED = "已完成"
-    RETURNED = "退货"
+    PAID_IN_TRANSIT = "已打款，在途中"
+    UNPAID_IN_TRANSIT = "未打款，在途中"
+    PAID_STOCKED = "已打款，入库完毕"
+    RETURNED = "验机不符，退货拦截"
 
 
 class Order(Base):
@@ -53,7 +53,7 @@ class Order(Base):
     shipping_fee = Column(Numeric(10, 2), nullable=True, default=0, comment="我方承担运费")
     order_status = Column(
         SAEnum(OrderStatus, values_callable=lambda x: [e.value for e in x]),
-        nullable=False, default=OrderStatus.PENDING.value, comment="订单状态"
+        nullable=False, default=OrderStatus.UNPAID_IN_TRANSIT.value, comment="订单状态"
     )
 
     notes = Column(Text, nullable=True, comment="备注")

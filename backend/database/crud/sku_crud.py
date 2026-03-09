@@ -2,18 +2,6 @@ from sqlalchemy.orm import Session
 from database.models.sku_model import SKU
 from database.schemas.sku_schema import SKUCreate, SKUUpdate
 
-def create_sku(db: Session, sku: SKUCreate):
-    db_sku = SKU(
-        category=sku.category,
-        brand=sku.brand,
-        model_name=sku.model_name,
-        properties=sku.properties
-    )
-    db.add(db_sku)
-    db.commit()
-    db.refresh(db_sku)
-    return db_sku
-
 def get_sku(db: Session, sku_id: int):
     return db.query(SKU).filter(SKU.id == sku_id).first()
 
@@ -54,6 +42,7 @@ def create_sku(db: Session, sku_in: SKUCreate):
     db_sku = SKU(
         category=sku_in.category,
         brand=sku_in.brand,
+        series=sku_in.series,
         model_name=sku_in.model_name,
         properties=sku_in.properties
     )
@@ -63,13 +52,18 @@ def create_sku(db: Session, sku_in: SKUCreate):
     return db_sku
 
 def search_skus(db: Session, category: str, brand: str = None, keyword: str = "", limit: int = 10):
-    """模糊搜索数据库"""
+    """模糊搜索数据库：在品牌、系列、型号中匹配关键词"""
     db_query = db.query(SKU).filter(SKU.category == category)
     
     if brand:
         db_query = db_query.filter(SKU.brand == brand)
     if keyword:
-        db_query = db_query.filter(SKU.model_name.ilike(f"%{keyword}%"))
+        like = f"%{keyword}%"
+        db_query = db_query.filter(
+            (SKU.model_name.ilike(like)) |
+            (SKU.series.ilike(like)) |
+            (SKU.brand.ilike(like))
+        )
         
     return db_query.limit(limit).all()
 
@@ -87,7 +81,7 @@ def get_brands_by_category(db: Session, category: str):
 
 
 def get_models_by_category_brand(db: Session, category: str, brand: str):
-    """获取某分类+品牌下的所有型号（含 properties）"""
+    """获取某分类+品牌下的所有型号（含 series 和 properties）"""
     return db.query(SKU).filter(
         SKU.category == category,
         SKU.brand == brand
@@ -95,10 +89,11 @@ def get_models_by_category_brand(db: Session, category: str, brand: str):
 
 
 def fuzzy_search_skus(db: Session, keyword: str, limit: int = 10):
-    """全局模糊搜索：在分类、品牌、型号中匹配关键词"""
+    """全局模糊搜索：在分类、品牌、系列、型号中匹配关键词"""
     like = f"%{keyword}%"
     return db.query(SKU).filter(
         (SKU.category.ilike(like)) |
         (SKU.brand.ilike(like)) |
+        (SKU.series.ilike(like)) |
         (SKU.model_name.ilike(like))
     ).limit(limit).all()

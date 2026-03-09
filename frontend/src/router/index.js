@@ -20,6 +20,12 @@ const routes = [
         meta: { title: '收货录入', icon: 'DocumentAdd' },
       },
       {
+        path: 'orders',
+        name: 'Orders',
+        component: () => import('@/views/orders/index.vue'),
+        meta: { title: '订单管理', icon: 'List' },
+      },
+      {
         path: 'sku',
         name: 'SkuList',
         component: () => import('@/views/sku/index.vue'),

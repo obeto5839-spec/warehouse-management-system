@@ -27,15 +27,19 @@ async def create_order(data: OrderCreate, db: Session = Depends(get_db)):
 
 @router.get("/list")
 async def list_orders(
-    skip: int = Query(0),
-    limit: int = Query(50),
+    page: int = Query(1, description="页码"),
+    page_size: int = Query(20, description="每页条数"),
     order_status: Optional[str] = Query(None, description="按状态筛选"),
     platform: Optional[str] = Query(None, description="按平台筛选"),
+    customer_id: Optional[str] = Query(None, description="按卖家ID模糊搜索"),
+    order_type: Optional[str] = Query(None, description="按物品大类筛选"),
     db: Session = Depends(get_db)
 ):
     service = OrderService(db)
-    result = await service.list(skip, limit, order_status, platform)
-    return AppResult(code=200, message="success", data=result)
+    skip = (page - 1) * page_size
+    result = await service.list(skip, page_size, order_status, platform, customer_id, order_type)
+    total = await service.count(order_status, platform, customer_id, order_type)
+    return AppResult(code=200, message="success", data={"items": result, "total": total})
 
 
 @router.get("/stats")

@@ -19,13 +19,38 @@ def get_order(db: Session, order_id: int):
 
 def get_orders(db: Session, skip: int = 0, limit: int = 50,
                order_status: Optional[str] = None,
-               platform: Optional[str] = None):
+               platform: Optional[str] = None,
+               customer_id: Optional[str] = None,
+               order_type: Optional[str] = None):
     query = db.query(Order)
     if order_status:
         query = query.filter(Order.order_status == order_status)
     if platform:
         query = query.filter(Order.platform == platform)
+    if customer_id:
+        query = query.filter(Order.customer_id.ilike(f"%{customer_id}%"))
+    if order_type:
+        query = query.filter(Order.order_type == order_type)
     return query.order_by(desc(Order.created_at)).offset(skip).limit(limit).all()
+
+
+def count_orders(db: Session,
+                 order_status: Optional[str] = None,
+                 platform: Optional[str] = None,
+                 customer_id: Optional[str] = None,
+                 order_type: Optional[str] = None) -> int:
+    """统计符合条件的订单总数"""
+    from sqlalchemy import func
+    query = db.query(func.count(Order.id))
+    if order_status:
+        query = query.filter(Order.order_status == order_status)
+    if platform:
+        query = query.filter(Order.platform == platform)
+    if customer_id:
+        query = query.filter(Order.customer_id.ilike(f"%{customer_id}%"))
+    if order_type:
+        query = query.filter(Order.order_type == order_type)
+    return query.scalar() or 0
 
 
 def update_order(db: Session, order_id: int, order_update: OrderUpdate):

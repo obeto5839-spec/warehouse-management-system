@@ -16,7 +16,7 @@ class OrderCreate(BaseModel):
     shipping_method: Optional[str] = Field(None, description="发货方式")
     payment_amount: Optional[float] = Field(0, description="应付打款金额")
     shipping_fee: Optional[float] = Field(0, description="我方承担运费")
-    order_status: str = Field("待收货", description="订单状态")
+    order_status: str = Field("未打款，在途中", description="订单状态")
     notes: Optional[str] = Field(None, description="备注")
 
 
