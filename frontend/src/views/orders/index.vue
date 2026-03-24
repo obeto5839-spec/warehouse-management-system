@@ -77,9 +77,16 @@
             <span>{{ typeIcon(row.order_type) }} {{ row.order_type }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="remark" label="备注" min-width="140" show-overflow-tooltip>
+        <el-table-column label="配置详情" min-width="280">
           <template #default="{ row }">
-            {{ row.notes || '-' }}
+            <div v-if="parseConfigList(row.config_detail).length" class="config-mini-table">
+              <div v-for="(item, i) in parseConfigList(row.config_detail)" :key="i" class="config-mini-row">
+                <span class="config-mini-label">{{ item.label }}</span>
+                <span class="config-mini-desc">{{ item.desc }}</span>
+                <span v-if="item.price" class="config-mini-price">{{ item.price }}</span>
+              </div>
+            </div>
+            <span v-else class="notes-text">{{ row.notes || '-' }}</span>
           </template>
         </el-table-column>
         <el-table-column prop="payment_amount" label="打款金额" width="110" align="right">
@@ -298,6 +305,56 @@ const parsedConfig = computed(() => {
     return null
   }
 })
+
+// 解析 config_detail JSON 为统一的 [{label, desc, price}] 格式
+function parseConfigList(configStr) {
+  if (!configStr) return []
+  try {
+    const data = JSON.parse(configStr)
+    const items = []
+    // 台式整机: { components: [...], extras: [...] }
+    if (data.components && Array.isArray(data.components)) {
+      for (const c of data.components) {
+        items.push({
+          label: c.label || c.type || '',
+          desc: c.description || `${c.brand || ''} ${c.series || ''} ${c.model || ''}`.trim(),
+          price: c.price ? `¥${c.price}` : '',
+        })
+      }
+      if (data.extras) {
+        for (const e of data.extras) {
+          items.push({
+            label: e.type || '',
+            desc: e.description || `${e.brand || ''} ${e.model || ''}`.trim(),
+            price: e.price ? `¥${e.price}` : '',
+          })
+        }
+      }
+    }
+    // 散件: [{ type, brand, series, model, price }]
+    else if (Array.isArray(data)) {
+      for (const p of data) {
+        items.push({
+          label: p.type || p.label || '',
+          desc: p.description || `${p.brand || ''} ${p.series || ''} ${p.model || ''}`.trim(),
+          price: p.price ? `¥${p.price}` : '',
+        })
+      }
+    }
+    // 笔记本: { brand, cpu, gpu, ram, storage, ... }
+    else if (typeof data === 'object') {
+      const fieldMap = { brand: '品牌', series: '系列', cpu: 'CPU', gpu: '显卡', ram: '内存', storage: '存储', screen: '屏幕' }
+      for (const [key, label] of Object.entries(fieldMap)) {
+        if (data[key]) {
+          items.push({ label, desc: String(data[key]), price: data[key + '_price'] ? `¥${data[key + '_price']}` : '' })
+        }
+      }
+    }
+    return items
+  } catch {
+    return []
+  }
+}
 
 function platformTagType(platform) {
   const map = { '闲鱼': 'warning', '淘宝': 'danger', '微信': 'success', '线下同城': 'info' }
@@ -569,5 +626,47 @@ onMounted(() => {
   color: #666;
   white-space: pre-wrap;
   word-break: break-all;
+}
+
+/* 表格内配置清单（类Excel样式） */
+.config-mini-table {
+  display: table;
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  line-height: 1.4;
+}
+.config-mini-row {
+  display: table-row;
+}
+.config-mini-row:nth-child(even) {
+  background: #f9fafb;
+}
+.config-mini-label {
+  display: table-cell;
+  padding: 3px 6px;
+  font-weight: 600;
+  color: #606266;
+  white-space: nowrap;
+  border-bottom: 1px solid #f0f0f0;
+  width: 50px;
+}
+.config-mini-desc {
+  display: table-cell;
+  padding: 3px 6px;
+  color: #333;
+  border-bottom: 1px solid #f0f0f0;
+}
+.config-mini-price {
+  display: table-cell;
+  padding: 3px 6px;
+  color: #F56C6C;
+  font-weight: 600;
+  white-space: nowrap;
+  text-align: right;
+  border-bottom: 1px solid #f0f0f0;
+}
+.notes-text {
+  color: #999;
 }
 </style>

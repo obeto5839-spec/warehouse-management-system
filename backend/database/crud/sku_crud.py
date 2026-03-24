@@ -29,13 +29,21 @@ def delete_sku(db: Session, sku_id: int):
     return db_sku
 
 
-def get_sku_by_exact_match(db: Session, category: str, brand: str, model_name: str):
-    """精确查找是否存在相同的 SKU"""
-    return db.query(SKU).filter(
+_UNSET = object()
+
+def get_sku_by_exact_match(db: Session, category: str, brand: str, model_name: str, series=_UNSET):
+    """精确查找是否存在相同的 SKU。series 不传则忽略，传 None 匹配空值，传字符串精确匹配"""
+    query = db.query(SKU).filter(
         SKU.category == category,
         SKU.brand == brand,
         SKU.model_name == model_name
-    ).first()
+    )
+    if series is not _UNSET:
+        if series is None:
+            query = query.filter(SKU.series.is_(None))
+        else:
+            query = query.filter(SKU.series == series)
+    return query.first()
 
 def create_sku(db: Session, sku_in: SKUCreate):
     """在数据库中真正创建一条 SKU 记录"""

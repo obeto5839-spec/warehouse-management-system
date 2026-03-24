@@ -70,34 +70,24 @@
                     :class="{ 'line-matched': lineMatchedSku[comp.key] }">
                     <span class="line-label">{{ comp.shortLabel }}</span>
                     <span class="line-divider"></span>
-                    <el-select
+                    <el-autocomplete
                       v-model="lineInputs[comp.key]"
-                      filterable
-                      allow-create
-                      default-first-option
-                      remote
-                      :remote-method="(q) => onLineSearch(comp.key, comp.skuCategory, q)"
-                      :loading="lineSearchLoading[comp.key]"
+                      :fetch-suggestions="(q, cb) => onLineSearch(comp.key, comp.skuCategory, q, cb)"
                       :placeholder="comp.placeholder"
                       style="flex:1"
                       class="line-select-input"
-                      @change="(val) => onLineSelect(comp.key, val)"
-                      @clear="onLineClear(comp.key)"
+                      @select="(item) => onLineSelect(comp.key, item)"
+                      @input="() => onLineInputChange(comp.key)"
                       clearable
-                      :reserve-keyword="false"
+                      :debounce="300"
                     >
-                      <el-option
-                        v-for="opt in lineSuggestions[comp.key]"
-                        :key="opt.id"
-                        :label="opt.label"
-                        :value="opt.label"
-                      >
+                      <template #default="{ item }">
                         <div class="suggestion-item">
-                          <span class="suggestion-brand">{{ opt.brand }}</span>
-                          <span class="suggestion-model">{{ opt.series ? opt.series + ' ' : '' }}{{ opt.model_name }}</span>
+                          <span class="suggestion-brand">{{ item.brand }}</span>
+                          <span class="suggestion-model">{{ item.series ? item.series + ' ' : '' }}{{ item.model_name }}</span>
                         </div>
-                      </el-option>
-                    </el-select>
+                      </template>
+                    </el-autocomplete>
                     <span v-if="lineMatchedSku[comp.key]" class="line-match-badge">✓ 已匹配</span>
                   </div>
 
@@ -112,32 +102,22 @@
                       <option value="其他">其他</option>
                     </select>
                     <span class="line-divider"></span>
-                    <el-select
+                    <el-autocomplete
                       v-model="extra.desc"
-                      filterable
-                      allow-create
-                      default-first-option
-                      remote
-                      :remote-method="(q) => onExtraLineSearch(i, extra.type, q)"
-                      :loading="extra._loading"
+                      :fetch-suggestions="(q, cb) => onExtraLineSearch(i, extra.type, q, cb)"
                       placeholder="输入型号及描述"
                       style="flex:1"
                       class="line-select-input"
                       clearable
-                      :reserve-keyword="false"
+                      :debounce="300"
                     >
-                      <el-option
-                        v-for="opt in (extra._suggestions || [])"
-                        :key="opt.id"
-                        :label="opt.label"
-                        :value="opt.label"
-                      >
+                      <template #default="{ item }">
                         <div class="suggestion-item">
-                          <span class="suggestion-brand">{{ opt.brand }}</span>
-                          <span class="suggestion-model">{{ opt.series ? opt.series + ' ' : '' }}{{ opt.model_name }}</span>
+                          <span class="suggestion-brand">{{ item.brand }}</span>
+                          <span class="suggestion-model">{{ item.series ? item.series + ' ' : '' }}{{ item.model_name }}</span>
                         </div>
-                      </el-option>
-                    </el-select>
+                      </template>
+                    </el-autocomplete>
                     <button class="line-remove-btn" @click="extraLineItems.splice(i, 1)">&times;</button>
                   </div>
                 </div>
@@ -483,89 +463,66 @@ function addExtraLine() {
 }
 
 // ---- 台式整机：智能搜索状态 ----
-const lineSuggestions = reactive({})
-const lineSearchLoading = reactive({})
 const lineMatchedSku = reactive({})
 const lineSearchCache = reactive({}) // 缓存搜索结果中的原始SKU数据
 COMPONENTS.forEach(c => {
-  lineSuggestions[c.key] = []
-  lineSearchLoading[c.key] = false
   lineMatchedSku[c.key] = false
   lineSearchCache[c.key] = []
 })
 
-// 防抖定时器
-const lineSearchTimers = {}
 
-async function onLineSearch(compKey, skuCategory, query) {
-  // 清除之前的定时器
-  if (lineSearchTimers[compKey]) clearTimeout(lineSearchTimers[compKey])
+async function onLineSearch(compKey, skuCategory, query, cb) {
   if (!query || query.length < 1) {
-    lineSuggestions[compKey] = []
+    cb([])
     return
   }
-  lineSearchLoading[compKey] = true
-  // 300ms 防抖
-  lineSearchTimers[compKey] = setTimeout(async () => {
-    try {
-      const res = await searchSkus({ category: skuCategory, keyword: query, limit: 15 })
-      const items = res.data || []
-      lineSearchCache[compKey] = items
-      lineSuggestions[compKey] = items.map(s => ({
-        id: s.id,
-        brand: s.brand,
-        series: s.series || '',
-        model_name: s.model_name,
-        label: `${s.brand}${s.series ? ' ' + s.series : ''} ${s.model_name}`,
-        properties: s.properties,
-      }))
-    } catch {
-      lineSuggestions[compKey] = []
-    } finally {
-      lineSearchLoading[compKey] = false
-    }
-  }, 300)
+  try {
+    const res = await searchSkus({ category: skuCategory, keyword: query, limit: 15 })
+    const items = res.data || []
+    lineSearchCache[compKey] = items
+    const suggestions = items.map(s => ({
+      id: s.id,
+      brand: s.brand,
+      series: s.series || '',
+      model_name: s.model_name,
+      value: `${s.brand}${s.series ? ' ' + s.series : ''} ${s.model_name}`,
+      properties: s.properties,
+    }))
+    cb(suggestions)
+  } catch {
+    cb([])
+  }
 }
 
-function onLineSelect(compKey, val) {
-  // 检查是否匹配了某个建议项
-  const matched = lineSuggestions[compKey].find(s => s.label === val)
-  lineMatchedSku[compKey] = !!matched
+function onLineSelect(compKey, item) {
+  lineInputs[compKey] = item.value
+  lineMatchedSku[compKey] = true
 }
 
-function onLineClear(compKey) {
+function onLineInputChange(compKey) {
+  // 用户手动修改了文字，取消匹配状态
   lineMatchedSku[compKey] = false
-  lineSuggestions[compKey] = []
 }
 
 // 额外配件行的搜索
-const extraSearchTimers = {}
-async function onExtraLineSearch(index, type, query) {
-  const extra = extraLineItems.value[index]
-  if (!extra) return
-  if (extraSearchTimers[index]) clearTimeout(extraSearchTimers[index])
+async function onExtraLineSearch(index, type, query, cb) {
   if (!query || query.length < 1) {
-    extra._suggestions = []
+    cb([])
     return
   }
-  extra._loading = true
-  extraSearchTimers[index] = setTimeout(async () => {
-    try {
-      const res = await searchSkus({ category: type, keyword: query, limit: 10 })
-      const items = res.data || []
-      extra._suggestions = items.map(s => ({
-        id: s.id,
-        brand: s.brand,
-        series: s.series || '',
-        model_name: s.model_name,
-        label: `${s.brand}${s.series ? ' ' + s.series : ''} ${s.model_name}`,
-      }))
-    } catch {
-      extra._suggestions = []
-    } finally {
-      extra._loading = false
-    }
-  }, 300)
+  try {
+    const res = await searchSkus({ category: type, keyword: query, limit: 10 })
+    const items = res.data || []
+    cb(items.map(s => ({
+      id: s.id,
+      brand: s.brand,
+      series: s.series || '',
+      model_name: s.model_name,
+      value: `${s.brand}${s.series ? ' ' + s.series : ''} ${s.model_name}`,
+    })))
+  } catch {
+    cb([])
+  }
 }
 
 // ---- 配件子向导数据加载 ----
@@ -1069,7 +1026,6 @@ async function handleSubmit() {
 .line-select-input :deep(.el-input__inner) {
   font-size: 13px; color: #111827;
 }
-.line-select-input :deep(.el-input__suffix) { right: 0; }
 .line-input-group.line-matched {
   background: #f0fdf4; border-color: #86efac;
 }
